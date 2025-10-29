@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-US">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>My GeoJSON Map Deliverable</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet" />
@@ -10,9 +10,9 @@
     body { margin: 0; padding: 0; }
     #container {
       display: flex;
-      height: 100vh;
-      flex-direction: row-reverse; /* panel on the right */
+      flex-direction: row-reverse;
       align-items: stretch;
+      height: 100vh;
     }
     #side-panel {
       flex-basis: 450px;
@@ -22,109 +22,116 @@
       background: #fff;
       border-left: 1px solid #ddd;
     }
-    h2 { margin-top: 0; }
-    button { margin-bottom: 10px; }
     #map { flex-grow: 1; }
+    h2 { margin-top: 0; }
+    button { margin-bottom: 10px; padding: 6px 10px; cursor: pointer; }
     table {
       border-collapse: collapse;
       width: 100%;
       border: 1px solid #ddd;
-      font-size: 14px;
     }
-    th, td {
-      text-align: left;
-      padding: 10px;
-    }
+    th, td { text-align: left; padding: 8px; }
     tr:nth-child(even) { background-color: #f2f2f2; }
-
     @media (max-width: 1024px) {
       #side-panel { display: none; }
     }
   </style>
 </head>
+
 <body>
   <main id="container">
-    <div id="map"></div>
     <div id="side-panel">
-      <h2>My GeoJSON Data</h2>
-      <button id="sortBtn">Sort Table</button>
-      <table id="dataTable">
-        <tr><th>Name</th><th>Value</th><th>Info</th></tr>
+      <h2>My GeoJSON Table</h2>
+      <button id="sortBtn">Sort by Value</button>
+      <table id="data-table">
+        <tr>
+          <th>ID</th>
+          <th>Value</th>
+          <th>Info</th>
+        </tr>
       </table>
     </div>
+    <div id="map"></div>
   </main>
 
   <script>
-    mapboxgl.accessToken = "YOUR_MAPBOX_ACCESS_TOKEN";
+    mapboxgl.accessToken = "pk.eyJ1IjoiZ2lydW13IiwiYSI6ImNtaGNsMnczejI4a2cybXB1b3h6dHBuaHkifQ.fO5Cyk2RL57zq0RKG8BDkg";
 
     const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/light-v11', // different from satellite-v9
-      center: [-122.33, 47.60], // adjust center as needed
-      zoom: 10
+      container: "map",
+      style: "mapbox://styles/mapbox/outdoors-v12",
+      center: [-122.3, 47.6],
+      zoom: 8
     });
 
     async function geojsonFetch() {
       let response, points, polygons;
-
-      response = await fetch('assets/my_points.geojson'); // your dataset 1
+      response = await fetch("assets/my_points.geojson");
       points = await response.json();
-
-      response = await fetch('assets/my_polygons.geojson'); // your dataset 2
+      response = await fetch("assets/my_polygons.geojson");
       polygons = await response.json();
 
-      map.on('load', () => {
-        // polygons layer
-        map.addSource('polygons', { type: 'geojson', data: polygons });
+      map.on("load", function() {
+        map.addSource("polygons", { type: "geojson", data: polygons });
         map.addLayer({
-          id: 'polygons-fill',
-          type: 'fill',
-          source: 'polygons',
-          paint: { 'fill-color': '#b7a57a', 'fill-opacity': 0.4 }
-        });
-
-        // points layer
-        map.addSource('points', { type: 'geojson', data: points });
-        map.addLayer({
-          id: 'points-layer',
-          type: 'circle',
-          source: 'points',
+          id: "polygons-layer",
+          type: "fill",
+          source: "polygons",
           paint: {
-            'circle-radius': 6,
-            'circle-stroke-width': 1.5,
-            'circle-color': '#4b2e83',
-            'circle-stroke-color': '#fff'
+            "fill-color": "#00aaff",
+            "fill-opacity": 0.4,
+            "fill-outline-color": "#0077aa"
           }
         });
-      });
 
-      // Populate the table
-      const table = document.getElementById('dataTable');
-      for (let f of points.features) {
-        const row = table.insertRow(-1);
-        row.insertCell(0).innerHTML = f.properties.name || 'N/A';
-        row.insertCell(1).innerHTML = f.properties.value || '-';
-        row.insertCell(2).innerHTML = f.properties.info || '-';
-      }
+        map.addSource("points", { type: "geojson", data: points });
+        map.addLayer({
+          id: "points-layer",
+          type: "circle",
+          source: "points",
+          paint: {
+            "circle-radius": 7,
+            "circle-color": "#ff4d4d",
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#fff"
+          }
+        });
 
-      // Sort table button
-      document.getElementById('sortBtn').addEventListener('click', () => {
-        let switching = true;
-        while (switching) {
-          switching = false;
-          const rows = table.rows;
-          for (let i = 1; i < rows.length - 1; i++) {
-            let shouldSwitch = false;
-            const x = rows[i].getElementsByTagName("td")[1].innerHTML;
-            const y = rows[i + 1].getElementsByTagName("td")[1].innerHTML;
-            if (parseFloat(x) < parseFloat(y)) { shouldSwitch = true; }
-            if (shouldSwitch) {
-              rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-              switching = true;
-              break;
+        map.on("click", "points-layer", (e) => {
+          const props = e.features[0].properties;
+          new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(`<strong>${props.name || "Unnamed"}</strong><br>${props.info || ""}`)
+            .addTo(map);
+        });
+
+        map.on("mouseenter", "points-layer", () => map.getCanvas().style.cursor = "pointer");
+        map.on("mouseleave", "points-layer", () => map.getCanvas().style.cursor = "");
+
+        const table = document.getElementById("data-table");
+        for (let i = 0; i < points.features.length; i++) {
+          const row = table.insertRow(-1);
+          row.insertCell(0).innerHTML = points.features[i].properties.id || i;
+          row.insertCell(1).innerHTML = points.features[i].properties.value || "";
+          row.insertCell(2).innerHTML = points.features[i].properties.info || "";
+        }
+
+        document.getElementById("sortBtn").addEventListener("click", function() {
+          let table = document.getElementById("data-table"), switching = true;
+          while (switching) {
+            switching = false;
+            let rows = table.rows;
+            for (let i = 1; i < (rows.length - 1); i++) {
+              let x = parseFloat(rows[i].getElementsByTagName("td")[1].innerHTML);
+              let y = parseFloat(rows[i + 1].getElementsByTagName("td")[1].innerHTML);
+              if (x < y) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                break;
+              }
             }
           }
-        }
+        });
       });
     }
 
